@@ -16,14 +16,19 @@ class Enemies():
         # ends = [self.map.give_coordinates_of_block(end) for end in self.map.end_positions]
         self.shortest_path(self.map.start_positions, self.map.end_positions[0])
         # self.shortest_path_pixels(start_positions, ends[0])
+        print('starts', self.map.start_positions)
         self.enemies = [Enemy(radius=5,
          health=20,
           damage=20,
            speed=self.step_size,
-            range=200,
+            range=50,
              attack_speed=0.5,
               pos=self.map.give_coordinates_of_block(i))
-               for i in self.routes]
+               for i in self.map.start_positions]
+
+    def __iter__(self):
+        for enemy in self.enemies:
+            yield enemy
 
     def give_possible_steps(self, current, unvisited, starts, end):
         routes = []
@@ -165,7 +170,7 @@ class Enemies():
     def update(self, dt, towers):
         [e.move(dt, self.dynamic_paths, self.map) for e in self.enemies]
         [e.attack(towers) for e in self.enemies]
-        [e.update(dt) for e in self.enemies]
+        [e.update(dt, self, towers) for e in self.enemies]
 
     def update_routes(self):
         self.shortest_path(self.map.start_positions, self.map.end_positions[0])
@@ -182,10 +187,12 @@ class Enemies():
         [e.draw() for e in self.enemies]
 
 
+
 class Enemy:
     def __init__(self, radius, health, damage, speed, range, attack_speed, pos):
         self.radius = radius
         self.health = health
+        self.max_health = health
         self.damage = damage
         self.speed = speed
         self.range = range
@@ -193,12 +200,18 @@ class Enemy:
         self.bullets = []
         self.attack_speed = attack_speed
         self.last_shoot = -1
+        self.deprecated = False
+
+    def deal_damage(self, damage):
+        self.health -= damage
+        if self.health <= 0:
+            self.deprecated = True
 
     def attack(self, towers):
         if time() - self.last_shoot > 1/self.attack_speed:
             target_tower = False
             for tower in towers:
-                if self.in_shooting_range(tower):
+                if self.in_shooting_range(tower) and not tower.deprecated:
                     target_tower = tower
             if target_tower:
                 angle = math.atan2(target_tower.pos[1] - self.pos[1], target_tower.pos[0] - self.pos[0])
@@ -210,28 +223,28 @@ class Enemy:
             return True
         return False
 
-
-
     def shoot(self, angle):
         angle = angle + 0.2 * (random.random() - 0.5)
-        self.bullets.append(Bullet(200, angle, self.pos, 2, self.range/200))
+        self.bullets.append(Bullet(300, angle, self.pos, damage=30, life_time=self.range/300))
 
     def move(self, dt, dynamic_routes, map):
-        on_block, map_tile_coordinates = map.give_indexes_of_coordinates(self.pos)
-        if map_tile_coordinates in map.end_positions:
-            return
-        move_to = dynamic_routes[map_tile_coordinates][1]
-        move_to = map.give_coordinates_of_block(move_to)
-        angle = math.atan2(move_to[1] - self.pos[1], move_to[0] - self.pos[0])
-        self.pos = (self.pos[0] + self.speed * dt * cos(angle),
-        self.pos[1] + self.speed * dt * sin(angle))
+        if not self.deprecated:
+            on_block, map_tile_coordinates = map.give_indexes_of_coordinates(self.pos)
+            if map_tile_coordinates in map.end_positions:
+                return
+            move_to = dynamic_routes[map_tile_coordinates][1]
+            move_to = map.give_coordinates_of_block(move_to)
+            angle = math.atan2(move_to[1] - self.pos[1], move_to[0] - self.pos[0])
+            self.pos = (self.pos[0] + self.speed * dt * cos(angle),
+            self.pos[1] + self.speed * dt * sin(angle))
 
-    def update(self, dt):
+    def update(self, dt, enemies, towers):
         for index, bullet in enumerate(self.bullets):
             if bullet.deprecated:
                 self.bullets.pop(index)
             else:
                 bullet.move(dt)
+                bullet.is_intersects(enemies, towers)
 
     def give_circle(self, numPoints = 10):
         verts = []
@@ -240,9 +253,23 @@ class Enemy:
             x = self.radius*cos(angle) + self.pos[0]
             y = self.radius*sin(angle) + self.pos[1]
             verts += [x,y]
-        return pyglet.graphics.vertex_list(numPoints, ('v2f', verts), ('c3B', (255, 100, 100) * numPoints))
+        if not self.deprecated:
+            return pyglet.graphics.vertex_list(numPoints, ('v2f', verts), ('c3B', (255, 100, 100) * numPoints))
+        return pyglet.graphics.vertex_list(numPoints, ('v2f', verts), ('c3B', (100, 100, 100) * numPoints))
 
     def draw(self):
+        width = self.health/self.max_health * self.radius * 2
+        width = max(width, 0)
+        height = 2
+        method = pyglet.gl.GL_QUADS
+        x = self.pos[0] - self.radius
+        y = self.pos[1] + self.radius + 2
+        pyglet.graphics.draw(4, method, ('v2f', [
+            x, y,
+                x+width, y,
+                    x+width, y+height,
+                        x, y+height]), ('c3B', (250, 20, 20) * 4))
+
         for index, bullet in enumerate(self.bullets):
             bullet.draw()
         self.give_circle().draw(pyglet.gl.GL_LINE_LOOP)

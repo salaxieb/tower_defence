@@ -126,4 +126,6 @@ class Map:
             if i == self.end_positions[0][0] and j == self.end_positions[0][1]:
                 return False, self.end_positions[0]
             else:
+                if (i, j) in  self.start_positions:
+                    return False, (i, j)
                 return False, (-1, -1)

@@ -11,7 +11,7 @@ class Bullet:
         self.angle = angle
         self.pos = pos
         self.damage = damage
-        self.radius = self.damage
+        self.radius = 3
         self.life_time = life_time
         self.born_time = time()
         self.deprecated = False
@@ -22,11 +22,22 @@ class Bullet:
     def move(self, dt):
         if time() - self.born_time > self.life_time:
             self.deprecated = True
+            return
         self.pos = (self.pos[0] + dt * self.speed * cos(self.angle),
         self.pos[1] + dt * self.speed * sin(self.angle))
 
-    def deal_damage(self, map):
-        pass
+    def is_intersects(self, enemies, towers):
+        for enemy in enemies:
+            if ((self.pos[0] - enemy.pos[0])**2 + (self.pos[1] - enemy.pos[1])**2) < enemy.radius**2:
+                enemy.deal_damage(self.damage)
+                self.deprecated = True
+                return
+                
+        for tower in towers:
+            if tower.inside_of_self(self.pos):
+                tower.deal_damage(self.damage)
+                self.deprecated = True
+                return
 
     def give_circle(self, numPoints = 5):
         verts = []

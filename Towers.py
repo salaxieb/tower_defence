@@ -2,6 +2,7 @@ from Bullet import Bullet
 from map import Map
 import pyglet
 from math import pi, radians, cos, sin, floor
+import math
 import random
 from time import time
 
@@ -15,7 +16,7 @@ class Towers:
             for j in range(self.map.blocks_y):
                 t = False
                 if (j > 0 and i == 3) or (j < 3 and i == 5):
-                    t = Tower(pos=self.map.blocks_arr[i][j].pos, width=self.map.block_width+5, height=self.map.block_height+5, range=500, health=200, damage=1)
+                    t = Tower(pos=self.map.blocks_arr[i][j].pos, width=self.map.block_width+2, height=self.map.block_height+2, range=150, health=1000, damage=1)
                 self.towers[i][j] = t
         self.towers_batch = pyglet.graphics.Batch()
         for tower in self:
@@ -40,7 +41,7 @@ class Towers:
     def tower_constructor(self, pos):
         on_block, (i, j) = self.map.give_indexes_of_coordinates(pos)
         if on_block:
-            t = Tower(pos=self.map.blocks_arr[i][j].pos, width=self.map.block_width+5, height=self.map.block_height+5, range=500, health=200, damage=1)
+            t = Tower(pos=self.map.blocks_arr[i][j].pos, width=self.map.block_width+5, height=self.map.block_height+5, range=150, health=200, damage=1)
             count, mode, *data = t.graphics()
             self.towers_batch.add(count, mode, None, data[0], data[-1])
             self.towers[i][j] = t
@@ -53,13 +54,12 @@ class Towers:
 
     def draw(self):
         self.towers_batch.draw()
-        [tower.draw_bullets() for tower in self]
+        [tower.draw() for tower in self]
 
-    def update(self, dt):
+    def update(self, dt, enemies):
         for tower in self:
             if tower:
-                tower.shoot()
-                tower.update(dt)
+                tower.update(dt, enemies, self)
 
     def on_example_tower(self, x, y):
         pos_x = self.example_tower.pos[0]
@@ -73,9 +73,10 @@ class Towers:
 
 
 class Tower:
-    def __init__(self, pos, width, height, range, health=100, attack_speed=0.2, damage=1):
+    def __init__(self, pos, width, height, range, health=1000, attack_speed=1, damage=1):
         self.pos = pos
         self.health = health
+        self.max_health = self.health
         self.attack_speed = attack_speed
         self.damage = damage
         self.width = width
@@ -83,6 +84,12 @@ class Tower:
         self.range = range
         self.bullets = []
         self.last_shoot = -1
+        self.deprecated = False
+
+    def deal_damage(self, damage):
+        self.health -= damage
+        if self.health <= 0:
+            self.deprecated = True
 
     def graphics(self):
         width = self.width/2
@@ -96,19 +103,66 @@ class Tower:
           x+width, y+height,
            x-width, y+height]), ('c3B', (50, 50, 150) * 4)
 
-    def shoot(self):
-        angle = pi + pi/6 + 0.02 * (random.random() - 0.5)
-        if time() - self.last_shoot > 1/self.attack_speed:
-            self.last_shoot = time()
-            self.bullets.append(Bullet(100, angle, self.pos, 2, self.range/200))
+    def attack(self, enemies):
+        if not self.deprecated:
+            if time() - self.last_shoot > 1/self.attack_speed:
+                target_enemy = False
+                for enemy in enemies:
+                    if self.in_shooting_range(enemy) and not enemy.deprecated:
+                        target_enemy = enemy
+                        break
+                if target_enemy:
+                    angle = math.atan2(target_enemy.pos[1] - self.pos[1], target_enemy.pos[0] - self.pos[0])
+                    self.last_shoot = time()
+                    self.shoot(angle)
 
-    def update(self, dt):
+    def in_shooting_range(self, enemy):
+        if ((self.pos[0] - enemy.pos[0])**2 + (self.pos[1] - enemy.pos[1])**2) < self.range**2:
+            return True
+        return False
+
+    def inside_of_self(self, pos):
+        if (self.pos[0] - self.width/2 <= pos[0] <= self.pos[0] + self.width/2 and
+        self.pos[1] - self.height/2 <= pos[1] <= self.pos[1] + self.height/2):
+            return True
+        return False
+
+    def shoot(self, angle):
+        angle = angle + 0.02 * (random.random() - 0.5)
+        self.bullets.append(Bullet(500, angle, self.pos, 2, self.range/500))
+
+    def update(self, dt, enemies, towers):
+        self.attack(enemies)
         for index, bullet in enumerate(self.bullets):
             if bullet.deprecated:
                 self.bullets.pop(index)
             else:
                 bullet.move(dt)
+                bullet.is_intersects(enemies, towers)
 
-    def draw_bullets(self):
+    def draw(self):
+        width = self.health/self.max_health * self.width
+        width = max(width, 0)
+        height = 4
+        method = pyglet.gl.GL_QUADS
+        x = self.pos[0] - self.width/2
+        y = self.pos[1] + self.height/2 + 2
+        pyglet.graphics.draw(4, method, ('v2f', [
+            x, y,
+                x+width, y,
+                    x+width, y+height,
+                        x, y+height]), ('c3B', (250, 20, 20) * 4))
+        if self.deprecated:
+            width = self.width/2
+            height = self.height/2
+            method = pyglet.gl.GL_QUADS
+            x = self.pos[0]
+            y = self.pos[1]
+            pyglet.graphics.draw(4, method, ('v2f', [
+            x-width, y-height,
+             x+width, y-height,
+              x+width, y+height,
+               x-width, y+height]), ('c3B', (50, 50, 50) * 4))
+
         for bullet in self.bullets:
             bullet.draw()

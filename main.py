@@ -26,7 +26,7 @@ class Game:
         self.map.check_if_on_block(x, y, dx, dy)
 
     def update(self, dt):
-        self.towers.update(dt)
+        self.towers.update(dt, self.enemies)
         self.enemies.update(dt, self.towers)
 
     def draw(self):
