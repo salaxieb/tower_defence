@@ -114,7 +114,7 @@ class Tower:
                 if target_enemy:
                     angle = math.atan2(target_enemy.pos[1] - self.pos[1], target_enemy.pos[0] - self.pos[0])
                     self.last_shoot = time()
-                    self.shoot(angle)
+                    self.shoot(angle, enemies)
 
     def in_shooting_range(self, enemy):
         if ((self.pos[0] - enemy.pos[0])**2 + (self.pos[1] - enemy.pos[1])**2) < self.range**2:
@@ -127,9 +127,9 @@ class Tower:
             return True
         return False
 
-    def shoot(self, angle):
+    def shoot(self, angle, enemies):
         angle = angle + 0.02 * (random.random() - 0.5)
-        self.bullets.append(Bullet(500, angle, self.pos, 2, self.range/500))
+        self.bullets.append(Bullet(speed=100, angle=angle, pos=self.pos, damage=20, life_time=self.range/100, targets=enemies))
 
     def update(self, dt, enemies, towers):
         self.attack(enemies)
@@ -138,7 +138,7 @@ class Tower:
                 self.bullets.pop(index)
             else:
                 bullet.move(dt)
-                bullet.is_intersects(enemies, towers)
+                bullet.is_intersects()
 
     def draw(self):
         width = self.health/self.max_health * self.width

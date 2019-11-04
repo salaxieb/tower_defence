@@ -6,13 +6,14 @@ import random
 
 
 class Bullet:
-    def __init__(self, speed, angle, pos, damage, life_time):
+    def __init__(self, speed, angle, pos, damage, life_time, targets):
         self.speed = speed
         self.angle = angle
         self.pos = pos
         self.damage = damage
         self.radius = 3
         self.life_time = life_time
+        self.targets = targets
         self.born_time = time()
         self.deprecated = False
         num_points = 5
@@ -26,16 +27,10 @@ class Bullet:
         self.pos = (self.pos[0] + dt * self.speed * cos(self.angle),
         self.pos[1] + dt * self.speed * sin(self.angle))
 
-    def is_intersects(self, enemies, towers):
-        for enemy in enemies:
-            if ((self.pos[0] - enemy.pos[0])**2 + (self.pos[1] - enemy.pos[1])**2) < enemy.radius**2:
-                enemy.deal_damage(self.damage)
-                self.deprecated = True
-                return
-                
-        for tower in towers:
-            if tower.inside_of_self(self.pos):
-                tower.deal_damage(self.damage)
+    def is_intersects(self):
+        for object in self.targets:
+            if object.inside_of_self(self.pos):
+                object.deal_damage(self.damage)
                 self.deprecated = True
                 return
 

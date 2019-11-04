@@ -12,23 +12,30 @@ class Enemies():
         self.start_positions = self.map.start_positions
         self.step_size = 20
         self.towers = towers
+        self.enemies = []
+        self.new_round()
         # start_positions = [self.map.give_coordinates_of_block(start) for start in self.map.start_positions]
         # ends = [self.map.give_coordinates_of_block(end) for end in self.map.end_positions]
         self.shortest_path(self.map.start_positions, self.map.end_positions[0])
         # self.shortest_path_pixels(start_positions, ends[0])
         print('starts', self.map.start_positions)
+
+    def __iter__(self):
+        for enemy in self.enemies:
+            yield enemy
+
+    def new_round(self):
+        for index, enemy in enumerate(self.enemies):
+            if enemy.deprecated:
+                self.enemies.pop(index)
         self.enemies = [Enemy(radius=5,
-         health=20,
+         health=200,
           damage=20,
            speed=self.step_size,
             range=50,
              attack_speed=0.5,
               pos=self.map.give_coordinates_of_block(i))
                for i in self.map.start_positions]
-
-    def __iter__(self):
-        for enemy in self.enemies:
-            yield enemy
 
     def give_possible_steps(self, current, unvisited, starts, end):
         routes = []
@@ -168,25 +175,18 @@ class Enemies():
         self.routes = routes
 
     def update(self, dt, towers):
+        for e in self.enemies:
+            if e.in_the_end:
+                self.new_round()
         [e.move(dt, self.dynamic_paths, self.map) for e in self.enemies]
         [e.attack(towers) for e in self.enemies]
         [e.update(dt, self, towers) for e in self.enemies]
 
     def update_routes(self):
         self.shortest_path(self.map.start_positions, self.map.end_positions[0])
-        self.enemies = [Enemy(radius=5,
-         health=20,
-          damage=20,
-           speed=self.step_size,
-            range=200,
-             attack_speed=5 + 1,
-              pos=self.map.give_coordinates_of_block(i))
-               for i in self.routes]
 
     def draw(self):
         [e.draw() for e in self.enemies]
-
-
 
 class Enemy:
     def __init__(self, radius, health, damage, speed, range, attack_speed, pos):
@@ -201,6 +201,12 @@ class Enemy:
         self.attack_speed = attack_speed
         self.last_shoot = -1
         self.deprecated = False
+        self.in_the_end = False
+
+    def inside_of_self(self, pos):
+        if ((pos[0] - self.pos[0])**2 + (pos[1] - self.pos[1])**2) < self.radius**2:
+            return True
+        return False
 
     def deal_damage(self, damage):
         self.health -= damage
@@ -216,21 +222,22 @@ class Enemy:
             if target_tower:
                 angle = math.atan2(target_tower.pos[1] - self.pos[1], target_tower.pos[0] - self.pos[0])
                 self.last_shoot = time()
-                self.shoot(angle)
+                self.shoot(angle, towers)
 
     def in_shooting_range(self, tower):
         if ((self.pos[0] - tower.pos[0])**2 + (self.pos[1] - tower.pos[1])**2) < self.range**2:
             return True
         return False
 
-    def shoot(self, angle):
+    def shoot(self, angle, towers):
         angle = angle + 0.2 * (random.random() - 0.5)
-        self.bullets.append(Bullet(300, angle, self.pos, damage=30, life_time=self.range/300))
+        self.bullets.append(Bullet(speed=300, angle=angle, pos=self.pos, damage=30, life_time=self.range/300, targets=towers))
 
     def move(self, dt, dynamic_routes, map):
         if not self.deprecated:
             on_block, map_tile_coordinates = map.give_indexes_of_coordinates(self.pos)
             if map_tile_coordinates in map.end_positions:
+                self.in_the_end = True
                 return
             move_to = dynamic_routes[map_tile_coordinates][1]
             move_to = map.give_coordinates_of_block(move_to)
@@ -244,7 +251,7 @@ class Enemy:
                 self.bullets.pop(index)
             else:
                 bullet.move(dt)
-                bullet.is_intersects(enemies, towers)
+                bullet.is_intersects()
 
     def give_circle(self, numPoints = 10):
         verts = []
