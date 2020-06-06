@@ -29,7 +29,7 @@ class Bullet:
 
     def is_intersects(self):
         for object in self.targets:
-            if object.inside_of_self(self.pos):
+            if not object.deprecated and object.inside_of_self(self.pos):
                 object.deal_damage(self.damage)
                 self.deprecated = True
                 return
