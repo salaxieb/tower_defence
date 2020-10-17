@@ -1,4 +1,4 @@
-from Bullet import Bullet
+from bullet import Bullet
 import pyglet
 from math import pi, radians, cos, sin, floor
 import math
@@ -14,15 +14,12 @@ class Towers:
 
         for i in range(self.map.blocks_x):
             self.towers.append([0] * self.map.blocks_y)
-        for i in range(self.map.blocks_x):
-            for j in range(self.map.blocks_y):
-                t = False
-                if (j > 0 and i == 3) or (j < 3 and i == 5):
-                    self.tower_constructor(self.map.blocks_arr[i][j].pos, random.choice([Tower, DefenceTower, AttackTower]))
-        for tower in self:
-            if tower:
-                count, mode, *data = tower.graphics()
-                self.towers_batch.add(count, mode, None, data[0], data[-1])
+
+        # for i in range(self.map.blocks_x):
+        #     for j in range(self.map.blocks_y):
+        #         t = False
+        #         if (j > 0 and i == 3) or (j < 3 and i == 5):
+        #             self.tower_constructor(self.map.blocks_arr[i][j].pos, random.choice([Tower, DefenceTower, AttackTower]))
 
         ### creating example tower ###
         # self.example_tower = Tower(pos = (1200, 600), width=self.map.block_width, height=self.map.block_height, range=0)
@@ -49,7 +46,7 @@ class Towers:
     def tower_constructor(self, pos, Tower):
         on_block, (i, j) = self.map.give_indexes_of_coordinates(pos)
         if on_block:
-            t = Tower(pos=self.map.blocks_arr[i][j].pos, width=self.map.block_width+1, height=self.map.block_height+1, range=150, health=200, damage=1)
+            t = Tower(pos=self.map.blocks_arr[i][j].pos, width=self.map.block_width+1, height=self.map.block_height+1)
             count, mode, *data = t.graphics()
             self.towers_batch.add(count, mode, None, data[0], data[-1])
             self.towers[i][j] = t
@@ -77,7 +74,7 @@ class Towers:
 
 
 class Tower:
-    def __init__(self, pos, width, height, range, health=1000, attack_speed=1, damage=1):
+    def __init__(self, pos, width, height, range=150, health=1000, attack_speed=1, damage=1, color=(50, 50, 150)):
         self.pos = pos
         self.health = health
         self.max_health = self.health
@@ -89,23 +86,29 @@ class Tower:
         self.bullets = []
         self.last_shoot = -1
         self.deprecated = False
+        self.color = color
 
     def deal_damage(self, damage):
         self.health -= damage
         if self.health <= 0:
             self.deprecated = True
 
-    def graphics(self):
+    def graphics(self, dragging_pos=None):
+        pos = self.pos
+        if dragging_pos:
+            print(f'{dragging_pos} inside tower')
+            pos = dragging_pos
+
         width = self.width/2
         height = self.height/2
         method = pyglet.gl.GL_QUADS
-        x = self.pos[0]
-        y = self.pos[1]
+        x = pos[0]
+        y = pos[1]
         return 4, method, ('v2f', [
         x-width, y-height,
          x+width, y-height,
           x+width, y+height,
-           x-width, y+height]), ('c3B', (50, 50, 150) * 4)
+           x-width, y+height]), ('c3B', self.color * 4)
 
     def attack(self, enemies):
         if not self.deprecated:
@@ -144,7 +147,7 @@ class Tower:
                 bullet.move(dt)
                 bullet.is_intersects()
 
-    def draw(self):
+    def draw(self, dragging_pos=None):
         #health bar
         width = self.health/self.max_health * self.width
         width = max(width, 0)
@@ -174,7 +177,7 @@ class Tower:
             bullet.draw()
 
 class AttackTower(Tower):
-    def __init__(self, pos, width, height, range, health=1000, attack_speed=10, damage=3):
+    def __init__(self, pos, width, height, range=300, health=1000, attack_speed=10, damage=3, color=(150, 50, 50) ):
         self.pos = pos
         self.health = health
         self.max_health = self.health
@@ -186,25 +189,14 @@ class AttackTower(Tower):
         self.bullets = []
         self.last_shoot = -1
         self.deprecated = False
+        self.color=color
 
     def shoot(self, angle, enemies):
         angle = angle + 0.02 * (random.random() - 0.5)
         self.bullets.append(Bullet(speed=300, angle=angle, pos=self.pos, damage=20, life_time=self.range/300, targets=enemies))
 
-    def graphics(self):
-        width = self.width/2
-        height = self.height/2
-        method = pyglet.gl.GL_QUADS
-        x = self.pos[0]
-        y = self.pos[1]
-        return 4, method, ('v2f', [
-        x-width, y-height,
-         x+width, y-height,
-          x+width, y+height,
-           x-width, y+height]), ('c3B', (150, 50, 50) * 4)
-
 class DefenceTower(Tower):
-    def __init__(self, pos, width, height, range, health=10000, attack_speed=0, damage=0):
+    def __init__(self, pos, width, height, range=0, health=10000, attack_speed=0, damage=0, color=(50, 150, 50)):
         self.pos = pos
         self.health = health
         self.max_health = self.health
@@ -216,18 +208,7 @@ class DefenceTower(Tower):
         self.bullets = []
         self.last_shoot = -1
         self.deprecated = False
+        self.color = color
 
     def attack(self, enemies):
         pass
-
-    def graphics(self):
-        width = self.width/2
-        height = self.height/2
-        method = pyglet.gl.GL_QUADS
-        x = self.pos[0]
-        y = self.pos[1]
-        return 4, method, ('v2f', [
-        x-width, y-height,
-         x+width, y-height,
-          x+width, y+height,
-           x-width, y+height]), ('c3B', (50, 150, 50) * 4)

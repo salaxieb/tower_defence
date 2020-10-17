@@ -4,10 +4,10 @@ from time import time, sleep
 from pyglet.window import Window
 from math import pi, radians, cos, sin, floor
 import math
-from Map import Map
-from Enemies import Enemies
-from Towers import Towers, Tower, AttackTower, DefenceTower
-from Menu import Menu
+from map import Map
+from enemies import Enemies
+from towers import Towers, Tower, AttackTower, DefenceTower
+from menu import Menu
 from pyglet.window import mouse
 
 screen_width = 1280
@@ -37,7 +37,10 @@ class Game:
             self.start_round(round=self.round)
 
     def on_mouse_motion(self, x, y, dx, dy):
-        self.map.check_if_on_block(x, y, dx, dy)
+        self.map.on_mouse_motion(x, y, dx, dy)
+
+    def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
+        self.menu.on_mouse_drag(x, y, dx, dy, buttons, modifiers)
 
     def update(self, dt):
         self.round_traker()
@@ -87,9 +90,12 @@ def on_mouse_press(x, y, button, modifiers):
 def on_mouse_release(x, y, button, modifiers):
     game.on_mouse_release(x, y, button, modifiers)
 
+@window.event
+def on_mouse_drag(x, y,  dx, dy, button, modifiers):
+    game.on_mouse_drag(x, y,  dx, dy, button, modifiers)
+
 
 def game_update(dt=0):
-    pass
     game.update(dt)
 
 def screen_update(dt=0):

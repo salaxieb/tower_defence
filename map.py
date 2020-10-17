@@ -110,7 +110,6 @@ class Map:
             example_tower_pos[0] += self.block_width + 10
 
     def on_mouse_press(self, x, y):
-        # self.check_if_on_example_tower
         for tower in self.example_towers:
             if tower.inside_of_self((x, y)):
                 self.dragging_tower = tower
@@ -120,7 +119,6 @@ class Map:
         if self.dragging_tower != False and self.give_indexes_of_coordinates((x,y))[0]:
             self.towers.tower_constructor((x, y), self.dragging_tower)
             self.dragging_tower = False
-
 
     def on_example_tower(self, x, y):
         pos_x = self.example_tower.pos[0]
@@ -147,7 +145,7 @@ class Map:
         pos_y = pos_y + random.randint(-self.block_width/2, self.block_width/2)
         return (pos_x, pos_y)
 
-    def check_if_on_block(self, x, y, dx, dy):
+    def on_mouse_motion(self, x, y, dx, dy):
         self.on_block, (self.on_block_i, self.on_block_j) = self.give_indexes_of_coordinates((x+dx/2, y+dy/2))
 
     def give_indexes_of_coordinates(self, pos):

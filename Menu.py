@@ -23,10 +23,10 @@ class Menu:
             example_tower_pos[0] += self.map.block_width + 10
 
     def on_mouse_press(self, x, y):
-        # self.check_if_on_example_tower
         for tower in self.example_towers:
             if tower.inside_of_self((x, y)):
                 self.dragging_tower = tower
+                self.mouse_pos = (x,y)
                 break
 
     def on_mouse_release(self, x, y):
@@ -35,5 +35,12 @@ class Menu:
             self.enemies.update_routes()
         self.dragging_tower = False
 
+    def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
+        self.mouse_pos = (x,y)
+
     def draw(self):
         self.batch.draw()
+        if self.dragging_tower:
+            count, mode, *data = self.dragging_tower.graphics(dragging_pos=self.mouse_pos)
+            pyglet.graphics.draw(count, mode, data[0],  data[1])
+            #self.dragging_tower.draw(dragging_pos=self.mouse_pos)

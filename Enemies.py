@@ -3,7 +3,7 @@ import math
 import pyglet
 from time import time
 import random
-from Bullet import Bullet
+from bullet import Bullet
 import numpy as np
 
 class Enemies():
@@ -17,7 +17,6 @@ class Enemies():
         # ends = [self.map.give_coordinates_of_block(end) for end in self.map.end_positions]
         self.shortest_path(self.map.start_positions, self.map.end_positions[0])
         # self.shortest_path_pixels(start_positions, ends[0])
-        print('starts', self.map.start_positions)
 
     def __iter__(self):
         for enemy in self.enemies:
@@ -31,7 +30,7 @@ class Enemies():
          health=100,
           damage=20,
            speed=40,
-            range=80,
+            shoot_range=80,
              attack_speed=2,
               pos=self.map.give_noisy_coordinates_of_block(random.choice(self.map.start_positions)))
                for i in range(difficulty)]
@@ -98,89 +97,14 @@ class Enemies():
         self.dynamic_paths = dynamic_paths
         self.routes = routes
 
-    # def triangle_situation(prev_0, prev_1, current):
-    #     # csse_1
-    #     # xs
-    #     # xx
-    #     # case_2
-    #     # sx
-    #     # xx
-    #     # case_3
-    #     # xx
-    #     # sx
-    #     # case_4
-    #     # xx
-    #     # xs
-    #     # case 1 & case 2
-    #     if prev_0[1] == prev_1[1] and abs(prev_0[0]-prev_1[0]) == 1:
-    #         pass
+        #print(self.dynamic_paths)
+        #print(self.routes)
+        #raise
 
     def reachable_condition(self, i, j, starts, end):
         in_map = (0 <= i < self.map.blocks_x and 0 <= j < self.map.blocks_y or (i, j) in starts or (i, j) == end)
         #on_tower = self.towers.on_tower(i, j)
         return in_map# and not on_tower
-
-    # def give_possible_steps_pixels(self, current, unvisited, starts, end):
-    #     routes = []
-    #     costs = []
-    #     i = current[0]
-    #     j = current[1]
-    #     for [horizontal, vertical] in [[0, self.step_size], [0, -self.step_size],
-    #      [self.step_size, 0], [-self.step_size, 0],
-    #       [self.step_size, self.step_size], [-self.step_size, -self.step_size],
-    #        [self.step_size, -self.step_size], [-self.step_size, self.step_size]]:
-    #         # [20, -self.step_size], [20, 0], [20, self.step_size], [-20, -self.step_size], [-20, 0], [-20, self.step_size],
-    #         # [-self.step_size, 20], [0, 20], [self.step_size, 20], [-self.step_size, -20], [0, -20], [self.step_size, -20],
-    #         # [-20, -20], [20, 20], [20, -20], [-20, 20]]:
-    #         if self.reachable_condition(i+horizontal, j+vertical, starts, end):
-    #             routes.append((i+horizontal, j+vertical))
-    #             costs.append(math.sqrt(horizontal**2 + vertical**2))
-    #     # routes = [route for route in routes if route in unvisited]
-    #     return routes, costs
-
-    # def give_next_step_pixels(self, unvisited, dynamic_paths):
-    #     clothest = np.inf
-    #     for tile in unvisited:
-    #         if dynamic_paths[tile][0] < clothest:
-    #             next_tile = tile
-    #             clothest = dynamic_paths[tile][0]
-    #     return next_tile
-
-    # def shortest_path_pixels(self, starts, end):
-    #     base_cost = 1
-    #     dynamic_paths = {}
-    #     unvisited = set()
-    #     for i in range(-40, self.map.size_x + 40, 1):
-    #         for j in range(-40, self.map.size_y + 40, 1):
-    #             if self.reachable_condition(self.map.gap_x+i,self.map.gap_y+j, end):
-    #                 dynamic_paths[(self.map.gap_x+i, self.map.gap_y+j)] = (np.inf, -1)
-    #                 unvisited.add((self.map.gap_x+i, self.map.gap_y+j))
-    #
-    #     dynamic_paths[end] = (0, -1)
-    #     unvisited.add(end)
-    #     for start in starts:
-    #         if self.reachable_condition(start[0],start[1], end):
-    #             dynamic_paths[start] = (np.inf, -1)
-    #             unvisited.add(start)
-    #
-    #     while len(unvisited) != 0:
-    #         current_pos = self.give_next_step_pixels(unvisited, dynamic_paths)
-    #         unvisited.remove(current_pos)
-    #         possible_routes, costs = self.give_possible_steps_pixels(current_pos, unvisited, starts, end)
-    #         for next_step, cost in zip(possible_routes, costs):
-    #             route_cost = dynamic_paths[current_pos][0] + cost
-    #             if route_cost < dynamic_paths[next_step][0]:
-    #                 dynamic_paths[next_step] = (route_cost, current_pos)
-    #     #backtracking
-    #     routes = []
-    #     for start in starts:
-    #         next_step = start
-    #         while next_step != end:
-    #             routes.append(dynamic_paths[next_step][1])
-    #             next_step = dynamic_paths[next_step][1]
-    #     self.dynamic_paths = dynamic_paths
-    #     self.routes = routes
-
 
     def update(self, dt, towers):
         [e.move(dt, self.dynamic_paths, self.map, self.towers) for e in self.enemies]
@@ -194,13 +118,13 @@ class Enemies():
         [e.draw() for e in self.enemies]
 
 class Enemy:
-    def __init__(self, radius, health, damage, speed, range, attack_speed, pos):
+    def __init__(self, radius, health, damage, speed, shoot_range, attack_speed, pos):
         self.radius = radius
         self.health = health
         self.max_health = health
         self.damage = damage
         self.speed = speed
-        self.range = range
+        self.shoot_range = shoot_range
         self.pos = pos
         self.bullets = []
         self.attack_speed = attack_speed
@@ -208,13 +132,21 @@ class Enemy:
         self.deprecated = False
         self.in_the_end = False
 
+        self.bounding_circle = []
+        numPoints = 10
+        print(numPoints)
+        for i in range(numPoints):
+            angle = radians(float(i)/numPoints * 360.0)
+            x = self.radius*cos(angle)
+            y = self.radius*sin(angle)
+            self.bounding_circle += [x,y]
+
     def inside_of_self(self, pos):
         if ((pos[0] - self.pos[0])**2 + (pos[1] - self.pos[1])**2) < self.radius**2:
             return True
         return False
 
     def deal_damage(self, damage):
-        print(self.health, self.deprecated)
         self.health -= damage
         if self.health <= 0:
             self.deprecated = True
@@ -232,13 +164,13 @@ class Enemy:
                     self.shoot(angle, towers)
 
     def in_shooting_range(self, tower):
-        if ((self.pos[0] - tower.pos[0])**2 + (self.pos[1] - tower.pos[1])**2) < self.range**2:
+        if ((self.pos[0] - tower.pos[0])**2 + (self.pos[1] - tower.pos[1])**2) < self.shoot_range**2:
             return True
         return False
 
     def shoot(self, angle, towers):
         angle = angle + 0.2 * (random.random() - 0.5)
-        self.bullets.append(Bullet(speed=200, angle=angle, pos=self.pos, damage=3, life_time=self.range/200, targets=towers))
+        self.bullets.append(Bullet(speed=200, angle=angle, pos=self.pos, damage=3, life_time=self.shoot_range/200, targets=towers))
 
     def move(self, dt, dynamic_routes, map, towers):
         if not self.deprecated:
@@ -265,12 +197,7 @@ class Enemy:
                 bullet.is_intersects()
 
     def give_circle(self, numPoints = 10):
-        verts = []
-        for i in range(numPoints):
-            angle = radians(float(i)/numPoints * 360.0)
-            x = self.radius*cos(angle) + self.pos[0]
-            y = self.radius*sin(angle) + self.pos[1]
-            verts += [x,y]
+        verts = [x + self.pos[i%2] for i, x in enumerate(self.bounding_circle)]
         if not self.deprecated:
             return pyglet.graphics.vertex_list(numPoints, ('v2f', verts), ('c3B', (255, 100, 100) * numPoints))
         return pyglet.graphics.vertex_list(numPoints, ('v2f', verts), ('c3B', (100, 100, 100) * numPoints))
